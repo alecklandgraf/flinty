@@ -1,5 +1,6 @@
 import urwid
 import commands
+import os
 
 
 class MenuButton(urwid.Button):
@@ -43,6 +44,9 @@ class Choice(urwid.WidgetWrap):
                 response = urwid.Text([' redis-server is running \n'])
             else:
                 response = urwid.Text([' redis-server is not running \n'])
+        elif self.caption == 'stop redis-server':
+            _kill_pid(_get_redis_pid())
+            response = urwid.Text([' redis-server stopped \n'])
         if not response:
             response = urwid.Text([' quit? \n'])
         done = MenuButton(u'Ok', exit_program)
@@ -69,6 +73,20 @@ def _check_redis():
     return 'redis-server' in output
 
 
+def _get_redis_pid():
+    redis_pid = commands.getoutput('pgrep redis-server')
+    if redis_pid:
+        return int(redis_pid)
+    else:
+        return None
+
+
+def _kill_pid(pid):
+    if not isinstance(pid, int):
+        pid = int(pid)
+    os.kill(pid, 2)
+
+
 def _on_off(check):
     if check:
         return 'ON'
@@ -85,8 +103,8 @@ menu_top = SubMenu(u'Main Menu', [
     SubMenu(u'System Services', [
         SubMenu(u'redis', [
             Choice(u'check redis-server'),
-            Choice(u'start'),
-            Choice(u'stop'),
+            Choice(u'start redis-server'),
+            Choice(u'stop redis-server'),
             Choice(u'restart'),
             ]),
         SubMenu(u'elasticsearch', [
