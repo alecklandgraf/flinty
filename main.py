@@ -2,6 +2,7 @@ import urwid
 import commands
 import os
 import subprocess
+import psutil
 
 
 class MenuButton(urwid.Button):
@@ -51,12 +52,22 @@ class Choice(urwid.WidgetWrap):
         elif self.caption == 'start redis-server':
             _start_redis()
             response = urwid.Text([' redis-server started \n'])
+        elif self.caption == 'start elasticsearch':
+            resp = _start_es()
+            response = urwid.Text([' elasticsearch %s \n' % resp])
+        elif self.caption == 'stop elasticsearch':
+            _kill_pid(_get_es_pid())
+            elasticsearch_config['pid'] = None
+            response = urwid.Text([' elasticsearch stopped \n'])
 
         if not response:
             response = urwid.Text([' quit? \n'])
         done = MenuButton(u'Ok', exit_program)
         response_box = urwid.Filler(urwid.Pile([response, done]))
         top.open_box(urwid.AttrMap(response_box, 'options'))
+
+
+elasticsearch_config = {}
 
 
 def exit_on_q(key):
@@ -96,6 +107,36 @@ def _start_redis():
     subprocess.Popen(['open', '-W', '-a', 'Terminal.app', _get_redis_path()])
 
 
+def _get_elasticsearch_info():
+    for p in psutil.process_iter():
+        if (
+            p.name() == 'java'
+            and p.cmdline()[-1] == 'org.elasticsearch.bootstrap.Elasticsearch'
+        ):
+            elasticsearch_config['pid'] = p.pid
+            path = p.cmdline()[-4]
+            path = path.split('-Des.path.home=')[-1]
+            path += '/bin/elasticsearch'
+            elasticsearch_config['path'] = path
+            return elasticsearch_config
+    return elasticsearch_config
+
+
+def _get_es_pid():
+    return _get_elasticsearch_info().get('pid')
+
+
+def _start_es():
+    if _get_es_pid():
+        return 'already running'
+    elif elasticsearch_config.get('path'):
+        path = elasticsearch_config.get('path')
+        subprocess.Popen(['open', '-W', '-a', 'Terminal.app', path])
+        return 'started'
+    else:
+        return 'cannot be started since flinty don\'t know how'
+
+
 def _kill_pid(pid):
     if not isinstance(pid, int):
         pid = int(pid)
@@ -120,13 +161,11 @@ menu_top = SubMenu(u'Main Menu', [
             Choice(u'check redis-server'),
             Choice(u'start redis-server'),
             Choice(u'stop redis-server'),
-            Choice(u'restart'),
             ]),
         SubMenu(u'elasticsearch', [
             Choice(u'check elasticsearch'),
-            Choice(u'start'),
-            Choice(u'stop'),
-            Choice(u'restart'),
+            Choice(u'start elasticsearch'),
+            Choice(u'stop elasticsearch'),
         ]),
     ]),
     Choice(u'redis-server %s' % _on_off(_check_redis())),
