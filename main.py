@@ -138,9 +138,12 @@ def _start_es():
 
 
 def _kill_pid(pid):
-    if not isinstance(pid, int):
-        pid = int(pid)
-    os.kill(pid, 2)
+    try:
+        if not isinstance(pid, int):
+            pid = int(pid)
+        os.kill(pid, 2)
+    except TypeError:
+        pass
 
 
 def _on_off(check):
