@@ -1,6 +1,7 @@
 import urwid
 import commands
 import os
+import subprocess
 
 
 class MenuButton(urwid.Button):
@@ -47,6 +48,10 @@ class Choice(urwid.WidgetWrap):
         elif self.caption == 'stop redis-server':
             _kill_pid(_get_redis_pid())
             response = urwid.Text([' redis-server stopped \n'])
+        elif self.caption == 'start redis-server':
+            _start_redis()
+            response = urwid.Text([' redis-server started \n'])
+
         if not response:
             response = urwid.Text([' quit? \n'])
         done = MenuButton(u'Ok', exit_program)
@@ -79,6 +84,16 @@ def _get_redis_pid():
         return int(redis_pid)
     else:
         return None
+
+
+def _get_redis_path():
+    path = commands.getoutput('which redis-server')
+    return path
+
+
+def _start_redis():
+    """only mac friendly at this point, and assumes a brew install"""
+    subprocess.Popen(['open', '-W', '-a', 'Terminal.app', _get_redis_path()])
 
 
 def _kill_pid(pid):
