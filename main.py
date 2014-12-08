@@ -1,4 +1,5 @@
 import urwid
+import commands
 
 
 class MenuButton(urwid.Button):
@@ -31,7 +32,19 @@ class Choice(urwid.WidgetWrap):
         self.caption = caption
 
     def item_chosen(self, button):
-        response = urwid.Text([u'  You chose ', self.caption, u'\n'])
+        response = None
+        if self.caption == 'check elasticsearch':
+            if _check_es():
+                response = urwid.Text([' elasticsearch is running \n'])
+            else:
+                response = urwid.Text([' elasticsearch is not running \n'])
+        elif self.caption == 'check redis-server':
+            if _check_redis():
+                response = urwid.Text([' redis-server is running \n'])
+            else:
+                response = urwid.Text([' redis-server is not running \n'])
+        if not response:
+            response = urwid.Text([' quit? \n'])
         done = MenuButton(u'Ok', exit_program)
         response_box = urwid.Filler(urwid.Pile([response, done]))
         top.open_box(urwid.AttrMap(response_box, 'options'))
@@ -45,6 +58,24 @@ def exit_on_q(key):
 def exit_program(key):
     raise urwid.ExitMainLoop()
 
+
+def _check_es():
+    output = commands.getoutput('ps -A')
+    return 'elasticsearch' in output
+
+
+def _check_redis():
+    output = commands.getoutput('ps -A')
+    return 'redis-server' in output
+
+
+def _on_off(check):
+    if check:
+        return 'ON'
+    else:
+        return 'OFF'
+
+
 menu_top = SubMenu(u'Main Menu', [
     SubMenu(u'code repos', [
         SubMenu(u'be-core', [
@@ -53,18 +84,21 @@ menu_top = SubMenu(u'Main Menu', [
     ]),
     SubMenu(u'System Services', [
         SubMenu(u'redis', [
-            Choice(u'check'),
+            Choice(u'check redis-server'),
             Choice(u'start'),
             Choice(u'stop'),
             Choice(u'restart'),
             ]),
         SubMenu(u'elasticsearch', [
-            Choice(u'check'),
+            Choice(u'check elasticsearch'),
             Choice(u'start'),
             Choice(u'stop'),
             Choice(u'restart'),
         ]),
     ]),
+    Choice(u'redis-server %s' % _on_off(_check_redis())),
+    Choice(u'elasticsearch %s' % _on_off(_check_es())),
+    Choice(u'quit'),
 ])
 
 palette = [
